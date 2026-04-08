@@ -1,22 +1,34 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.20)
 project(lua-protobuf C)
 
-set(LUA_INCLUDE_DIR "" CACHE PATH "Lua 头文件目录")
-set(LUA_LIBRARY "" CACHE FILEPATH "Lua 导入库或静态库路径")
+set(LUA_INCLUDE_DIR "" CACHE PATH "Lua header directory")
+set(LUA_LIBRARY "" CACHE FILEPATH "Lua import or static library path")
+
+if(NOT LUA_INCLUDE_DIR)
+  message(FATAL_ERROR "LUA_INCLUDE_DIR is required")
+endif()
+
+if(NOT LUA_LIBRARY)
+  message(FATAL_ERROR "LUA_LIBRARY is required")
+endif()
 
 set(PB_SOURCES pb.c)
-
-if(WIN32)
-    list(APPEND PB_SOURCES pb.def)
+if(WIN32 AND BUILD_SHARED_LIBS)
+  list(APPEND PB_SOURCES pb.def)
 endif()
 
-add_library(pb SHARED ${PB_SOURCES})
-set_target_properties(pb PROPERTIES PREFIX "")
+add_library(pb ${PB_SOURCES})
+target_include_directories(pb PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${LUA_INCLUDE_DIR}")
+target_link_libraries(pb PRIVATE "${LUA_LIBRARY}")
+set_target_properties(pb PROPERTIES
+  PREFIX ""
+  POSITION_INDEPENDENT_CODE ON
+)
 
-if(LUA_INCLUDE_DIR)
-    target_include_directories(pb PRIVATE "${LUA_INCLUDE_DIR}")
-endif()
-
-if(LUA_LIBRARY)
-    target_link_libraries(pb PRIVATE "${LUA_LIBRARY}")
-endif()
+install(
+  TARGETS pb
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+install(FILES pb.h protoc.lua DESTINATION include)
